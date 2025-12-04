@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEH 題庫練習 (Topic 2)</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; padding: 20px; line-height: 1.6; background-color: #f4f4f9; }
+        #quiz-container { max-width: 800px; margin: 0 auto; }
+        .question-card { background: #fff; border: 1px solid #ddd; padding: 25px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        .q-meta { display: flex; justify-content: space-between; color: #888; font-size: 0.9em; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .q-id { font-weight: bold; color: #d9534f; }
+        
+        .q-text { font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .q-text-cn { color: #555; font-size: 1em; margin-bottom: 20px; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px; }
+        
+        .q-images { text-align: center; margin: 20px 0; }
+        .q-images img { max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
+        .options { margin: 20px 0; }
+        .option-item { margin: 8px 0; padding: 12px 15px; background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .option-item:hover { background: #e9ecef; border-color: #adb5bd; transform: translateX(5px); }
+        
+        .btn-area { text-align: center; margin-top: 20px; }
+        button { padding: 10px 25px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; margin: 0 10px; transition: background 0.3s; }
+        button:hover { background-color: #0056b3; }
+        button.show-ans { background-color: #28a745; }
+        button.show-ans:hover { background-color: #218838; }
+        
+        .answer-area { margin-top: 25px; padding: 20px; background-color: #e8f4f8; border-radius: 8px; display: none; border: 1px solid #bce8f1; }
+        .ans-label { font-weight: bold; color: #0056b3; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+    <div id="quiz-container"></div>
+    
+    <div class="btn-area">
+        <button onclick="toggleAnswer()" class="show-ans">顯示/隱藏答案</button>
+        <button onclick="loadNextQuestion()">下一題</button>
+    </div>
+
+    <script>
+        let questionsData = [];
+        let currentQuestionIndex = 0;
+
+        // 1. 讀取 JSON 檔案
+        fetch('Topic2_Output_v16.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                questionsData = data;
+                console.log("成功載入題目，共 " + data.length + " 題");
+                loadQuestion(0); 
+            })
+            .catch(error => {
+                console.error('無法讀取題目檔:', error);
+                document.getElementById('quiz-container').innerHTML = `<h3 style="color:red; text-align:center;">無法載入 Topic2_Output_v16.json <br>請確保 JSON 檔案與此 HTML 在同一資料夾，且使用 Web Server 開啟 (或 VS Code Live Server)。</h3>`;
+            });
+
+        // 2. 顯示題目的核心函數
+        function loadQuestion(index) {
+            if (questionsData.length === 0) return;
+
+            if (index >= questionsData.length) {
+                alert("恭喜！已經是最後一題了！");
+                return;
+            }
+            
+            // 確保索引不小於 0
+            if (index < 0) index = 0;
+
+            currentQuestionIndex = index;
+            const q = questionsData[index];
+            const container = document.getElementById('quiz-container');
+            
+            // 重置答案區域顯示狀態
+            document.querySelector('.show-ans').innerText = "顯示答案";
+            
+            // 清空並重建卡片
+            container.innerHTML = '';
+            const card = document.createElement('div');
+            card.className = 'question-card';
+
+            // --- (A) 題號 ---
+            const metaElem = document.createElement('div');
+            metaElem.className = 'q-meta';
+            metaElem.innerHTML = `<span class="q-id">Question #: ${q['Question :']}</span> <span>Progress: ${index + 1} / ${questionsData.length}</span>`;
+            card.appendChild(metaElem);
+
+            // --- (B) 英文題目 ---
+            const enText = document.createElement('div');
+            enText.className = 'q-text';
+            // 處理換行符號，讓排版更好看
+            enText.innerText = q['EN'];
+            card.appendChild(enText);
+
+            // --- (C) 圖片顯示 (修復重點) ---
+            // 檢查 Image_Base64 是否為陣列且有內容
+            if (q['Image_Base64'] && Array.isArray(q['Image_Base64']) && q['Image_Base64'].length > 0) {
+                const imgDiv = document.createElement('div');
+                imgDiv.className = 'q-images';
+                
+                q['Image_Base64'].forEach(imgSrc => {
+                    const img = document.createElement('img');
+                    img.src = imgSrc;
+                    imgDiv.appendChild(img);
+                });
+                card.appendChild(imgDiv);
+            }
+
+            // --- (D) 中文翻譯 ---
+            if (q['C'] && q['C'] !== "翻譯失敗") {
+                const cnText = document.createElement('div');
+                cnText.className = 'q-text-cn';
+                cnText.innerText = q['C']; 
+                card.appendChild(cnText);
+            }
+
+            // --- (E) 選項顯示 (主要修復點) ---
+            const optsDiv = document.createElement('div');
+            optsDiv.className = 'options';
+            
+            // 判斷 '選項' 欄位是陣列還是字串
+            let optionsList = q['選項'];
+
+            if (Array.isArray(optionsList)) {
+                // 如果是陣列 (V5/V6 腳本產出的格式)，直接使用
+                optionsList.forEach(optText => {
+                    createOptionItem(optsDiv, optText);
+                });
+            } else if (typeof optionsList === 'string') {
+                // 如果是字串 (舊格式)，嘗試切割或直接顯示
+                // 這裡做個簡單處理，如果包含 "A." "B." 嘗試換行顯示
+                const lines = optionsList.split(/(?=[A-E]\.)/); 
+                if (lines.length > 1) {
+                    lines.forEach(optText => createOptionItem(optsDiv, optText));
+                } else {
+                    createOptionItem(optsDiv, optionsList);
+                }
+            } else {
+                optsDiv.innerText = "無選項資料";
+            }
+            card.appendChild(optsDiv);
+
+            // --- (F) 答案區域 ---
+            const ansDiv = document.createElement('div');
+            ansDiv.id = 'answer-box';
+            ansDiv.className = 'answer-area';
+            
+            // 處理換行顯示
+            let expText = q['Explanation'] ? q['Explanation'].replace(/\n/g, '<br>') : '無解析';
+            
+            ansDiv.innerHTML = `
+                <div class="ans-label">✅ Correct Answer: ${q['Answer']}</div>
+                <hr style="border: 0; border-top: 1px solid #bce8f1; margin: 10px 0;">
+                <strong>Explanation:</strong><br>
+                <span style="color:#333;">${expText}</span>
+            `;
+            card.appendChild(ansDiv);
+
+            container.appendChild(card);
+        }
+
+        // 輔助函數：建立選項按鈕
+        function createOptionItem(parentDiv, text) {
+            if (!text.trim()) return;
+            const optItem = document.createElement('div');
+            optItem.className = 'option-item';
+            optItem.innerText = text;
+            optItem.onclick = function() { 
+                // 點擊變色效果 (單選邏輯)
+                const siblings = parentDiv.querySelectorAll('.option-item');
+                siblings.forEach(el => el.style.backgroundColor = '#fdfdfd');
+                this.style.backgroundColor = '#fff3cd'; // 黃色高亮
+                this.style.borderColor = '#ffeeba';
+            };
+            parentDiv.appendChild(optItem);
+        }
+
+        function loadNextQuestion() {
+            loadQuestion(currentQuestionIndex + 1);
+            window.scrollTo(0, 0); // 切換題目後捲動到頂部
+        }
+
+        function toggleAnswer() {
+            const ansBox = document.getElementById('answer-box');
+            const btn = document.querySelector('.show-ans');
+            
+            if (ansBox.style.display === 'block') {
+                ansBox.style.display = 'none';
+                btn.innerText = "顯示答案";
+            } else {
+                ansBox.style.display = 'block';
+                btn.innerText = "隱藏答案";
+                // 自動捲動到答案區
+                ansBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    </script>
+</body>
+</html>
